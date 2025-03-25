@@ -1,0 +1,14 @@
+{
+  "cohere": {
+    "api_key": "your-cohere-api-key-here"
+  },
+  "openai": {
+    "api_key": "your-openai-api-key-here"
+  },
+  "tavily": {
+    "api_key": "your-tavily-api-key-here"
+  },
+  "googleCloud": {
+    "projectId": "your-google-cloud-project-id-here"
+  }
+} 
