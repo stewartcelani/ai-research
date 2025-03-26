@@ -3,6 +3,7 @@ using System;
 using System.Threading.Tasks;
 using System.IO;
 using System.Text.Json;
+using Google.Apis.Auth.OAuth2;
 
 class Program
 {
@@ -15,10 +16,7 @@ class Program
 
 public class TextInputSample
 {
-    // Load project ID from API_KEYS.json
-    private static readonly string PROJECT_ID = LoadProjectId();
-    
-    private static string LoadProjectId()
+    private static (string projectId, string serviceAccountKey) LoadCredentials()
     {
         try
         {
@@ -26,28 +24,37 @@ public class TextInputSample
             string apiKeysPath = Path.Combine(projectRoot, "API_KEYS.json");
             string jsonContent = File.ReadAllText(apiKeysPath);
             using JsonDocument doc = JsonDocument.Parse(jsonContent);
-            return doc.RootElement.GetProperty("googleCloud").GetProperty("projectId").GetString();
+            var googleCloud = doc.RootElement.GetProperty("googleCloud");
+            string projectId = googleCloud.GetProperty("projectId").GetString();
+            string serviceAccountKey = googleCloud.GetProperty("serviceAccountKey").ToString();
+            return (projectId, serviceAccountKey);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading Google Cloud project ID: {ex.Message}");
-            return "your-project-id-here";
+            Console.WriteLine($"Error loading credentials: {ex.Message}");
+            return (null, null);
         }
     }
-    
+
     public async Task<string> TextInput(
-        string projectId = null,
         string location = "us-central1",
         string publisher = "google",
         string model = "gemini-2.0-flash")
     {
-        // Use loaded project ID if not explicitly provided
-        projectId = projectId ?? PROJECT_ID;
+        var (projectId, serviceAccountKey) = LoadCredentials();
+        if (projectId == null || serviceAccountKey == null)
+        {
+            throw new InvalidOperationException("Failed to load credentials.");
+        }
 
+        var credential = GoogleCredential.FromJson(serviceAccountKey)
+            .CreateScoped("https://www.googleapis.com/auth/cloud-platform");
         var predictionServiceClient = new PredictionServiceClientBuilder
         {
-            Endpoint = $"{location}-aiplatform.googleapis.com"
+            Endpoint = $"{location}-aiplatform.googleapis.com",
+            Credential = credential
         }.Build();
+
         string prompt = @"What's a good name for a flower shop that specializes in selling bouquets of dried flowers?";
 
         var generateContentRequest = new GenerateContentRequest
