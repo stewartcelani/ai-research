@@ -1,4 +1,10 @@
 {
+  "fireworks": {
+    "api_key": "your-fireworks-api-key-here"
+  },
+  "groq": {
+    "api_key": "your-groq-api-key-here"
+  },
   "cohere": {
     "api_key": "your-cohere-api-key-here"
   },
