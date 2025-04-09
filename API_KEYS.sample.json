@@ -8,7 +8,23 @@
   "tavily": {
     "api_key": "your-tavily-api-key-here"
   },
+  "linkup": {
+    "api_key": "your-linkup-api-key-here"
+  }, 
   "googleCloud": {
-    "projectId": "your-google-cloud-project-id-here"
+    "projectId": "your-google-cloud-project-id-here",
+    "serviceAccountKey": {
+      "type": "service_account",
+      "project_id": "",
+      "private_key_id": "",
+      "private_key": "",
+      "client_email": "",
+      "client_id": "",
+      "auth_uri": "",
+      "token_uri": "",
+      "auth_provider_x509_cert_url": "",
+      "client_x509_cert_url": "",
+      "universe_domain": ""
+    }
   }
 } 
