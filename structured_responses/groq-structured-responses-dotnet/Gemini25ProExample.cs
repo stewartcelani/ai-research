@@ -6,17 +6,17 @@ using groq_structured_responses_dotnet;
 using Type = Google.Cloud.AIPlatform.V1.Type;
 using Value = Google.Protobuf.WellKnownTypes.Value;
 
-public class Gemini2FlashExample
+public class Gemini25ProExample
 {
     private readonly PredictionServiceClient _predictionServiceClient;
     private readonly string _projectId;
     private const string Location = "us-central1";
     private const string Publisher = "google";
-    private const string ModelId = "gemini-2.0-flash";
+    private const string ModelId = "gemini-2.5-pro-preview-03-25";
     private readonly string _query;
     private readonly bool _showFullApiResponse;
 
-    public Gemini2FlashExample(string query, bool showFullApiResponse = false)
+    public Gemini25ProExample(string query, bool showFullApiResponse = false)
     {
         _showFullApiResponse = showFullApiResponse;
         _query = query;
@@ -45,7 +45,7 @@ public class Gemini2FlashExample
         // Overall timing for the entire process
         var totalStopwatch = Stopwatch.StartNew();
 
-        Console.WriteLine("\n========== GOOGLE GEMINI-2.0-FLASH STRUCTURED RESPONSE TEST ==========\n");
+        Console.WriteLine("\n========== GOOGLE GEMINI-2.5-PRO STRUCTURED RESPONSE TEST ==========\n");
         Console.WriteLine($"Using Model: {ModelId}");
         Console.WriteLine("Starting process...\n");
 

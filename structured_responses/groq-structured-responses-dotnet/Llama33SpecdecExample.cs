@@ -10,9 +10,11 @@ public class Llama33SpecdecExample
     private const string GroqApiUrl = "https://api.groq.com/openai/v1/chat/completions";
     private const string ModelId = "llama-3.3-70b-specdec";
     private readonly string _query;
+    private readonly bool _showFullApiResponse;
 
-    public Llama33SpecdecExample(string query)
+    public Llama33SpecdecExample(string query, bool showFullApiResponse = false)
     {
+        _showFullApiResponse = showFullApiResponse;
         _query = query;
         _client = new HttpClient();
     }
@@ -108,10 +110,13 @@ public class Llama33SpecdecExample
             var responseBody = await response.Content.ReadAsStringAsync();
 
             // Log full response for debugging
-            /*Console.ForegroundColor = ConsoleColor.DarkGray;
-            Console.WriteLine("\n========== FULL API RESPONSE ==========\n");
-            Console.WriteLine(responseBody);
-            Console.ResetColor();*/
+            if (_showFullApiResponse)
+            {
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.WriteLine("\n========== FULL API RESPONSE ==========\n");
+                Console.WriteLine(response);
+                Console.ResetColor();
+            }
 
             using var jsonDoc = JsonDocument.Parse(responseBody);
 

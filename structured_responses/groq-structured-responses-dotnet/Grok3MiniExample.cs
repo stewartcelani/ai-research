@@ -4,16 +4,20 @@ using System.Text;
 using System.Text.Json;
 using groq_structured_responses_dotnet;
 
-public class GroqQwqSample
+public class Grok3MiniExample
 {
     private readonly HttpClient _client;
-    private const string GroqApiUrl = "https://api.groq.com/openai/v1/chat/completions";
-    private const string ModelId = "qwen-qwq-32b";
+    private const string XAiApiUrl = "https://api.x.ai/v1/chat/completions";
+    private const string ModelId = "grok-3-mini-fast-beta";
     private readonly string _query;
+    private readonly string _reasoningEffort;
+    private readonly bool _showFullApiResponse;
 
-    public GroqQwqSample(string query)
+    public Grok3MiniExample(string query, string reasoningEffort = "high", bool showFullApiResponse = false)
     {
+        _showFullApiResponse = showFullApiResponse;
         _query = query;
+        _reasoningEffort = reasoningEffort; // Can be "low" or "high"
         _client = new HttpClient();
     }
 
@@ -22,13 +26,14 @@ public class GroqQwqSample
         // Overall timing for the entire process
         var totalStopwatch = Stopwatch.StartNew();
 
-        Console.WriteLine("\n========== GROQ STRUCTURED RESPONSE TIMING TEST ==========\n");
+        Console.WriteLine("\n========== XAI GROK-3-MINI STRUCTURED RESPONSE TEST ==========\n");
         Console.WriteLine($"Using Model: {ModelId}");
+        Console.WriteLine($"Reasoning Effort: {_reasoningEffort}");
         Console.WriteLine("Starting process...\n");
 
         // Setup API client timing
         var setupStopwatch = Stopwatch.StartNew();
-        var apiKey = GroqHelper.GetApiKey();
+        var apiKey = XAiHelper.GetApiKey();
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         _client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         setupStopwatch.Stop();
@@ -66,8 +71,6 @@ public class GroqQwqSample
     public async Task<(StructuredResponse StructuredResponse, string RawReasoning)>
         GetStructuredResponseAsync(string query)
     {
-      
-
         // Create the user message with the query in JSON format
         var userMessage = $@"## User Question
 ```json
@@ -90,8 +93,8 @@ public class GroqQwqSample
             },
             temperature = 0.0,
             max_tokens = 4096,
+            reasoning_effort = _reasoningEffort,
             response_format = new { type = "json_object" }
-            // Removed reasoning_format parameter that was causing 400 error
         };
 
         var content = new StringContent(
@@ -107,10 +110,20 @@ public class GroqQwqSample
         {
             // Time the API request
             var requestStopwatch = Stopwatch.StartNew();
-            Console.WriteLine("Sending request to Groq API...");
+            Console.WriteLine("Sending request to XAI API...");
 
-            // Send the request to Groq API
-            var response = await _client.PostAsync(GroqApiUrl, content);
+            // Send the request to XAI API
+            var response = await _client.PostAsync(XAiApiUrl, content);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"\nError Response ({response.StatusCode}):");
+                Console.WriteLine(errorContent);
+                Console.ResetColor();
+            }
+            
             response.EnsureSuccessStatusCode();
 
             requestStopwatch.Stop();
@@ -122,10 +135,13 @@ public class GroqQwqSample
             var responseBody = await response.Content.ReadAsStringAsync();
 
             // Log full response for debugging
-            Console.ForegroundColor = ConsoleColor.DarkGray;
-            Console.WriteLine("\n========== FULL API RESPONSE ==========\n");
-            Console.WriteLine(responseBody);
-            Console.ResetColor();
+            if (_showFullApiResponse)
+            {
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.WriteLine("\n========== FULL API RESPONSE ==========\n");
+                Console.WriteLine(response);
+                Console.ResetColor();
+            }
 
             using var jsonDoc = JsonDocument.Parse(responseBody);
 
@@ -133,12 +149,14 @@ public class GroqQwqSample
             var choices = jsonDoc.RootElement.GetProperty("choices");
             var firstChoice = choices[0];
             var message = firstChoice.GetProperty("message");
-
-            // Raw reasoning will be empty since we removed the reasoning_format parameter
-            string rawReasoning = "";
-
-            // Get the content with the structured response
             var modelContent = message.GetProperty("content").GetString();
+            
+            // Extract the reasoning content if available
+            string rawReasoning = "";
+            if (message.TryGetProperty("reasoning_content", out var reasoningElement))
+            {
+                rawReasoning = reasoningElement.GetString();
+            }
 
             // Parse the JSON response into our StructuredResponse class
             var structuredResponse = JsonSerializer.Deserialize<StructuredResponse>(
@@ -156,23 +174,10 @@ public class GroqQwqSample
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error calling Groq API: {ex.Message}");
+            Console.WriteLine($"Error calling XAI API: {ex.Message}");
             if (ex.InnerException != null)
             {
                 Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
-            }
-
-            // Try to extract more error details if available
-            try
-            {
-                if (ex is HttpRequestException httpEx && httpEx.Message.Contains("400"))
-                {
-                    Console.WriteLine("\nThis is likely due to an unsupported parameter in the request.");
-                    Console.WriteLine("The 'reasoning_format' parameter is not supported by Groq API.");
-                }
-            }
-            catch
-            {
             }
 
             throw;

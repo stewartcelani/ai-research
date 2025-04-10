@@ -1,4 +1,7 @@
 {
+  "xai": {
+    "api_key": "your-xai-api-key-here"
+  },
   "fireworks": {
     "api_key": "your-fireworks-api-key-here"
   },

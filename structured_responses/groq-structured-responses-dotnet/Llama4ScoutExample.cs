@@ -11,10 +11,11 @@ public class Llama4ScoutExample
     private const string GroqApiUrl = "https://api.groq.com/openai/v1/chat/completions";
     private const string ModelId = "meta-llama/llama-4-scout-17b-16e-instruct";
     private readonly string _query;
+    private readonly bool _showFullApiResponse;
 
-
-    public Llama4ScoutExample(string query)
+    public Llama4ScoutExample(string query, bool showFullApiResponse = false)
     {
+        _showFullApiResponse = showFullApiResponse;
         _query = query;
         _client = new HttpClient();
     }
@@ -111,10 +112,13 @@ public class Llama4ScoutExample
             var responseBody = await response.Content.ReadAsStringAsync();
 
             // Log full response for debugging
-            /*Console.ForegroundColor = ConsoleColor.DarkGray;
-            Console.WriteLine("\n========== FULL API RESPONSE ==========\n");
-            Console.WriteLine(responseBody);
-            Console.ResetColor();*/
+            if (_showFullApiResponse)
+            {
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.WriteLine("\n========== FULL API RESPONSE ==========\n");
+                Console.WriteLine(response);
+                Console.ResetColor();
+            }
 
             using var jsonDoc = JsonDocument.Parse(responseBody);
 

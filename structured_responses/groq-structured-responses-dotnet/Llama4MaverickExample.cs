@@ -10,10 +10,11 @@ public class Llama4MaverickExample
     private const string GroqApiUrl = "https://api.groq.com/openai/v1/chat/completions";
     private const string ModelId = "meta-llama/llama-4-maverick-17b-128e-instruct";
     private readonly string _query;
+    private readonly bool _showFullApiResponse;
 
-
-    public Llama4MaverickExample(string query)
+    public Llama4MaverickExample(string query, bool showFullApiResponse = false)
     {
+        _showFullApiResponse = showFullApiResponse;
         _query = query;
         _client = new HttpClient();
     }
@@ -76,7 +77,7 @@ public class Llama4MaverickExample
                 new { role = "system", content = PromptHelper.SystemPrompt },
                 new { role = "user", content = userMessage }
             },
-            temperature = 0.0,
+            temperature = 0.7,
             max_tokens = 4096,
             response_format = new { type = "json_object" }
             // No reasoning_format parameter for Llama-4-Maverick
@@ -110,10 +111,13 @@ public class Llama4MaverickExample
             var responseBody = await response.Content.ReadAsStringAsync();
 
             // Log full response for debugging
-            Console.ForegroundColor = ConsoleColor.DarkGray;
-            Console.WriteLine("\n========== FULL API RESPONSE ==========\n");
-            Console.WriteLine(responseBody);
-            Console.ResetColor();
+            if (_showFullApiResponse)
+            {
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.WriteLine("\n========== FULL API RESPONSE ==========\n");
+                Console.WriteLine(response);
+                Console.ResetColor();
+            }
 
             using var jsonDoc = JsonDocument.Parse(responseBody);
 

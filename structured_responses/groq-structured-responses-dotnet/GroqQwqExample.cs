@@ -1,18 +1,18 @@
-﻿using System.Net.Http.Headers;
+﻿using System.Diagnostics;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using System.Diagnostics;
 using groq_structured_responses_dotnet;
 
-public class Llama4MaverickFireworksExample
+public class GroqQwqExample
 {
     private readonly HttpClient _client;
-    private const string FireworksApiUrl = "https://api.fireworks.ai/inference/v1/chat/completions";
-    private const string ModelId = "accounts/fireworks/models/llama4-maverick-instruct-basic";
+    private const string GroqApiUrl = "https://api.groq.com/openai/v1/chat/completions";
+    private const string ModelId = "qwen-qwq-32b";
     private readonly string _query;
     private readonly bool _showFullApiResponse;
-    
-    public Llama4MaverickFireworksExample(string query, bool showFullApiResponse = false)
+
+    public GroqQwqExample(string query, bool showFullApiResponse = false)
     {
         _showFullApiResponse = showFullApiResponse;
         _query = query;
@@ -24,13 +24,13 @@ public class Llama4MaverickFireworksExample
         // Overall timing for the entire process
         var totalStopwatch = Stopwatch.StartNew();
 
-        Console.WriteLine("\n========== FIREWORKS LLAMA-4-MAVERICK STRUCTURED RESPONSE TEST ==========\n");
+        Console.WriteLine("\n========== GROQ STRUCTURED RESPONSE TIMING TEST ==========\n");
         Console.WriteLine($"Using Model: {ModelId}");
         Console.WriteLine("Starting process...\n");
 
         // Setup API client timing
         var setupStopwatch = Stopwatch.StartNew();
-        var apiKey = FireworksHelper.GetApiKey();
+        var apiKey = GroqHelper.GetApiKey();
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         _client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         setupStopwatch.Stop();
@@ -51,14 +51,25 @@ public class Llama4MaverickFireworksExample
         Console.WriteLine($"API Call + Processing Time: {apiStopwatch.ElapsedMilliseconds}ms");
         Console.WriteLine($"Total Execution Time: {totalStopwatch.ElapsedMilliseconds}ms");
 
+        // Display raw reasoning (if available)
+        if (!string.IsNullOrEmpty(responseData.RawReasoning))
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("\n========== RAW REASONING ==========\n");
+            Console.ResetColor();
+            Console.WriteLine(responseData.RawReasoning);
+            Console.WriteLine();
+        }
+
         // Display structured response properties
-        responseData.LogProperties();
+        responseData.StructuredResponse.LogProperties();
     }
 
-    public async Task<StructuredResponse> GetStructuredResponseAsync(string query)
+    public async Task<(StructuredResponse StructuredResponse, string RawReasoning)>
+        GetStructuredResponseAsync(string query)
     {
-        try
-    {
+      
+
         // Create the user message with the query in JSON format
         var userMessage = $@"## User Question
 ```json
@@ -76,16 +87,13 @@ public class Llama4MaverickFireworksExample
             model = ModelId,
             messages = new object[]
             {
-                new { role = "system", content = new object[] { new { type = "text", text = PromptHelper.SystemPrompt } } },
-                new { role = "user", content = new object[] { new { type = "text", text = userMessage } } }
+                new { role = "system", content = PromptHelper.SystemPrompt },
+                new { role = "user", content = userMessage }
             },
             temperature = 0.0,
             max_tokens = 4096,
-            top_p = 1,
-            top_k = 40,
-            presence_penalty = 0,
-            frequency_penalty = 0,
             response_format = new { type = "json_object" }
+            // Removed reasoning_format parameter that was causing 400 error
         };
 
         var content = new StringContent(
@@ -97,23 +105,14 @@ public class Llama4MaverickFireworksExample
         prepStopwatch.Stop();
         Console.WriteLine($"Request preparation completed in: {prepStopwatch.ElapsedMilliseconds}ms");
 
-
+        try
+        {
             // Time the API request
             var requestStopwatch = Stopwatch.StartNew();
-            Console.WriteLine("Sending request to Fireworks API...");
+            Console.WriteLine("Sending request to Groq API...");
 
-            // Send the request to Fireworks API
-            var response = await _client.PostAsync(FireworksApiUrl, content);
-            
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"\nError Response ({response.StatusCode}):");
-                Console.WriteLine(errorContent);
-                Console.ResetColor();
-            }
-            
+            // Send the request to Groq API
+            var response = await _client.PostAsync(GroqApiUrl, content);
             response.EnsureSuccessStatusCode();
 
             requestStopwatch.Stop();
@@ -139,31 +138,12 @@ public class Llama4MaverickFireworksExample
             var choices = jsonDoc.RootElement.GetProperty("choices");
             var firstChoice = choices[0];
             var message = firstChoice.GetProperty("message");
-            
-            // In Fireworks API, the content might be an array of objects instead of a string
-            JsonElement contentElement = message.GetProperty("content");
-            string modelContent;
-            
-            if (contentElement.ValueKind == JsonValueKind.Array)
-            {
-                // If content is an array, find the first text element
-                modelContent = "";
-                foreach (var item in contentElement.EnumerateArray())
-                {
-                    if (item.TryGetProperty("type", out var typeElement) && 
-                        typeElement.GetString() == "text" && 
-                        item.TryGetProperty("text", out var textElement))
-                    {
-                        modelContent = textElement.GetString();
-                        break;
-                    }
-                }
-            }
-            else
-            {
-                // If content is a string
-                modelContent = contentElement.GetString();
-            }
+
+            // Raw reasoning will be empty since we removed the reasoning_format parameter
+            string rawReasoning = "";
+
+            // Get the content with the structured response
+            var modelContent = message.GetProperty("content").GetString();
 
             // Parse the JSON response into our StructuredResponse class
             var structuredResponse = JsonSerializer.Deserialize<StructuredResponse>(
@@ -177,14 +157,27 @@ public class Llama4MaverickFireworksExample
             processStopwatch.Stop();
             Console.WriteLine($"Response processing completed in: {processStopwatch.ElapsedMilliseconds}ms");
 
-            return structuredResponse;
+            return (structuredResponse, rawReasoning);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error calling Fireworks API: {ex.Message}");
+            Console.WriteLine($"Error calling Groq API: {ex.Message}");
             if (ex.InnerException != null)
             {
                 Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+            }
+
+            // Try to extract more error details if available
+            try
+            {
+                if (ex is HttpRequestException httpEx && httpEx.Message.Contains("400"))
+                {
+                    Console.WriteLine("\nThis is likely due to an unsupported parameter in the request.");
+                    Console.WriteLine("The 'reasoning_format' parameter is not supported by Groq API.");
+                }
+            }
+            catch
+            {
             }
 
             throw;
